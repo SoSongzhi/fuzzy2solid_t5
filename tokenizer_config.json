@@ -1,0 +1,9 @@
+{
+    "do_lower_case": false,
+    "tokenizer_class": "BertTokenizerFast",
+    "unk_token": "[UNK]",
+    "pad_token": "[PAD]",
+    "cls_token": "[CLS]",
+    "sep_token": "[SEP]",
+    "mask_token": "[MASK]"
+}
