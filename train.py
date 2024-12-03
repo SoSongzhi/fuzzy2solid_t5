@@ -48,42 +48,39 @@ train_df, eval_df = train_test_split(df, test_size=0.1, random_state=42)
 train_dataset = Dataset.from_pandas(train_df)
 eval_dataset = Dataset.from_pandas(eval_df)
 
-# 加载自定义 Tokenizer
+# splite Tokenizer
 source_tokenizer = SourceTokenizer(source_vocab_file)
 target_tokenizer = TargetTokenizer(target_vocab_file)
 
-# 加载模型
+# use pretrained model
 model = AutoModelForSeq2SeqLM.from_pretrained(model_name, ignore_mismatched_sizes=True)
+# use from_stratch model
 # model = AutoModelForSeq2SeqLM.from_config(config)
 
-# 替换嵌入层
+# change model's embedding layer
 model.encoder.embed_tokens = torch.nn.Embedding(source_vocab_size, model.config.d_model)
 model.decoder.embed_tokens = torch.nn.Embedding(target_vocab_size, model.config.d_model)
 
-# 初始化嵌入层权重（随机初始化）
+# init the weight of model
 model.encoder.embed_tokens.weight.data.normal_(mean=0.0, std=model.config.initializer_factor)
 model.decoder.embed_tokens.weight.data.normal_(mean=0.0, std=model.config.initializer_factor)
 
-# 更新模型配置
 model.config.vocab_size = source_vocab_size
 model.config.decoder_vocab_size = target_vocab_size
 
-# 数据预处理函数
 def preprocess_data(examples):
     inputs = [source_tokenizer.tokenize(seq) for seq in examples["input"]]
     targets = [target_tokenizer.tokenize(seq) for seq in examples["target"]]
 
-    # 转换为 ID 并进行填充/截断
     input_ids = [source_tokenizer.convert_tokens_to_ids(tokens)[:max_length] for tokens in inputs]
     target_ids = [target_tokenizer.convert_tokens_to_ids(tokens)[:max_length] for tokens in targets]
 
-    # 填充到最大长度
     pad_id_source = source_tokenizer.vocab.get("[PAD]", 0)
     pad_id_target = target_tokenizer.vocab.get("[PAD]", 0)
     input_ids = [seq + [pad_id_source] * (max_length - len(seq)) for seq in input_ids]
     target_ids = [seq + [pad_id_target] * (max_length - len(seq)) for seq in target_ids]
 
-    # 创建 attention_mask
+ 
     attention_mask = [[1 if token != pad_id_source else 0 for token in seq] for seq in input_ids]
 
     return {
@@ -92,11 +89,10 @@ def preprocess_data(examples):
         "labels": target_ids,
     }
 
-# 应用预处理到数据集
 train_dataset = train_dataset.map(preprocess_data, batched=True)
 eval_dataset = eval_dataset.map(preprocess_data, batched=True)
 
-# 设置训练参数
+
 training_args = TrainingArguments(
     output_dir=output_dir,
     eval_strategy="epoch",
@@ -115,8 +111,6 @@ training_args = TrainingArguments(
     fp16=False,
 )
 
-
-# 创建 Trainer 并训练
 trainer = Trainer(
     model=model,
     args=training_args,
